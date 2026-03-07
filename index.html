@@ -1068,15 +1068,18 @@ function addProduct() {
   const name = document.getElementById('p-name').value.trim();
   const price = parseFloat(document.getElementById('p-price').value);
   if (!name || !price) { showToast('⚠️ اكملي اسم المنتج والسعر'); return; }
+  const imgUrl = document.getElementById('p-img-url') ? document.getElementById('p-img-url').value.trim() : null;
   const p = {
     id: editingId || Date.now(),
     name,
     desc: document.getElementById('p-desc').value.trim(),
+    description: document.getElementById('p-desc').value.trim(),
     price,
     category: document.getElementById('p-cat').value,
     emoji: document.getElementById('p-emoji').value.trim(),
     badge: document.getElementById('p-badge').value.trim(),
-    img: imgData || null,
+    img: imgUrl || imgData || null,
+    image: imgUrl || imgData || null,
   };
   if (editingId) {
     const idx = products.findIndex(x => x.id === editingId);
@@ -1106,7 +1109,7 @@ function loadAdminProducts() {
   }
   list.innerHTML = products.map(p => `
     <div class="admin-product-item" style="opacity:${p.outOfStock?0.6:1}">
-      ${p.img ? `<img src="${p.img}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;${p.outOfStock?'filter:grayscale(60%)':''}">` : `<div class="admin-product-item-img" style="${p.outOfStock?'filter:grayscale(60%)':''}">${p.emoji||catEmoji[p.category]||'🌸'}</div>`}
+      ${(p.img||p.image) ? `<img src="${p.img||p.image}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;${p.outOfStock?'filter:grayscale(60%)':''}">` : `<div class="admin-product-item-img" style="${p.outOfStock?'filter:grayscale(60%)':''}">${p.emoji||catEmoji[p.category]||'🌸'}</div>`}
       <div class="admin-p-info">
         <div class="admin-p-name">${p.name} ${p.outOfStock ? '<span style="background:#e67e22;color:#fff;font-size:0.65rem;padding:0.15rem 0.5rem;border-radius:10px;margin-right:0.3rem">خلص</span>' : ''}</div>
         <div class="admin-p-price">${p.price.toLocaleString()} جم · ${catNames[p.category]||p.category}</div>
@@ -1151,7 +1154,7 @@ function editProduct(id) {
   document.getElementById('p-cat').value = p.category;
   document.getElementById('p-emoji').value = p.emoji || '';
   document.getElementById('p-badge').value = p.badge || '';
-  if (p.img) { imgData = p.img; const prev = document.getElementById('p-img-preview'); prev.src = p.img; prev.style.display = 'block'; }
+  if (p.img||p.image) { imgData = p.img||p.image; const prev = document.getElementById('p-img-preview'); prev.src = p.img||p.image; prev.style.display = 'block'; }
   document.getElementById('submit-btn-txt').textContent = 'حفظ التعديلات';
   document.querySelectorAll('.admin-tab')[0].click();
   showToast('✏️ عدلي المنتج واحفظيه');
