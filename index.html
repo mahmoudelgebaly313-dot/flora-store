@@ -876,9 +876,9 @@ function updateCartCount() {
 }
 
 function addToCart(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
-  const ex = cart.find(x => x.id === id);
+  const ex = cart.find(x => String(x.id) === String(id));
   if (ex) ex.qty++;
   else cart.push({...p, qty:1});
   saveCart(); updateCartCount(); renderCart();
@@ -913,7 +913,7 @@ function renderCart() {
 }
 
 function changeQty(id, d) {
-  const item = cart.find(x => x.id === id);
+  const item = cart.find(x => String(x.id) === String(id));
   if (!item) return;
   item.qty = Math.max(1, item.qty + d);
   saveCart(); updateCartCount(); renderCart();
@@ -1121,7 +1121,7 @@ function loadAdminProducts() {
 }
 
 function toggleOutOfStock(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
   p.outOfStock = !p.outOfStock;
   toggleOutOfStockCloud(p.id, p.outOfStock).then(() => {
@@ -1143,7 +1143,7 @@ function deleteProduct(id) {
   showToast('🗑️ المنتج اتحذف');
 }
 function editProduct(id) {
-  const p = products.find(x => x.id === id); if (!p) return;
+  const p = products.find(x => String(x.id) === String(id)); if (!p) return;
   editingId = id;
   document.getElementById('p-name').value = p.name;
   document.getElementById('p-desc').value = p.desc || '';
