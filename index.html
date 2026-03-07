@@ -732,7 +732,7 @@ async function addProductToCloud(p) {
   const res = await fetch(`${SB_URL}/rest/v1/products`, {
     method: 'POST',
     headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
-    body: JSON.stringify({ name: p.name, description: p.description, price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.image, out_of_stock: false })
+    body: JSON.stringify({ name: p.name, description: p.desc || p.description || '', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img || p.image || null, out_of_stock: false })
   });
   const data = await res.json();
   return data[0];
