@@ -698,17 +698,26 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
 </div>
 
 <script>
-// ===== GIST CONFIG =====
-const GIST_ID = '031965a9b8eae4641081a8625ee60246';
-const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
+// ===== SUPABASE CONFIG =====
+const SB_URL = 'https://dxqzqndoqzwveephlsot.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4cXpxbmRvcXp3dmVlcGhsc290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NzcyMTMsImV4cCI6MjA4ODQ1MzIxM30.yC8EiNxuaMrCk0A12jtBGsfOoAlf3OpC1xfxuOxStv4';
+const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
 
 async function loadFromCloud() {
   try {
-    const res = await fetch(GIST_API + '?t=' + Date.now());
+    const res = await fetch(`${SB_URL}/rest/v1/products?select=*&order=created_at.asc`, { headers: SB_HEADERS });
     const data = await res.json();
-    const raw = data.files['products.json'].content;
-    const parsed = JSON.parse(raw);
-    products = parsed.products || [];
+    products = data.map(p => ({
+      id: String(p.id),
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      category: p.category,
+      emoji: p.emoji,
+      badge: p.badge,
+      image: p.image,
+      outOfStock: p.out_of_stock
+    }));
     localStorage.setItem('flora_products', JSON.stringify(products));
     renderProducts(currentCategory === 'all' ? products : products.filter(p => p.category === currentCategory));
     updateCatCounts();
@@ -720,17 +729,30 @@ async function loadFromCloud() {
 }
 
 async function saveToCloud() {
-  try {
-    await fetch(GIST_API, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { 'products.json': { content: JSON.stringify({products}) } } })
-    });
-    localStorage.setItem('flora_products', JSON.stringify(products));
-  } catch(e) {
-    console.error('Cloud save error:', e);
-    localStorage.setItem('flora_products', JSON.stringify(products));
-  }
+  // saveToCloud is handled per-operation (add/delete/toggle)
+  localStorage.setItem('flora_products', JSON.stringify(products));
+}
+
+async function addProductToCloud(p) {
+  const res = await fetch(`${SB_URL}/rest/v1/products`, {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+    body: JSON.stringify({ name: p.name, description: p.description, price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.image, out_of_stock: false })
+  });
+  const data = await res.json();
+  return data[0];
+}
+
+async function deleteProductFromCloud(id) {
+  await fetch(`${SB_URL}/rest/v1/products?id=eq.${id}`, { method: 'DELETE', headers: SB_HEADERS });
+}
+
+async function toggleOutOfStockCloud(id, val) {
+  await fetch(`${SB_URL}/rest/v1/products?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
+    body: JSON.stringify({ out_of_stock: val })
+  });
 }
 
 function updateCatCounts() {
@@ -1059,9 +1081,15 @@ function addProduct() {
     if (idx !== -1) products[idx] = p;
     editingId = null;
     document.getElementById('submit-btn-txt').textContent = 'إضافة المنتج';
-  } else { products.push(p); }
-  saveToCloud();
-  renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
+  } else {
+    addProductToCloud(p).then(saved => {
+      if (saved) p.id = String(saved.id);
+      products.push(p);
+      localStorage.setItem('flora_products', JSON.stringify(products));
+      renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
+      updateCatCounts();
+    });
+  }
   showToast(`✅ "${name}" اتضافت بنجاح`);
   ['p-name','p-desc','p-price','p-emoji','p-badge'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('p-img-preview').style.display = 'none';
@@ -1094,17 +1122,22 @@ function toggleOutOfStock(id) {
   const p = products.find(x => x.id === id);
   if (!p) return;
   p.outOfStock = !p.outOfStock;
-  saveToCloud();
-  loadAdminProducts();
-  renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
+  toggleOutOfStockCloud(p.id, p.outOfStock).then(() => {
+    localStorage.setItem('flora_products', JSON.stringify(products));
+    loadAdminProducts();
+    renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
+  });
   showToast(p.outOfStock ? `🚫 "${p.name}" اتعلم كـ"خلص"` : `✅ "${p.name}" متاح تاني`);
 }
 function deleteProduct(id) {
   if (!confirm('متأكدة إنك عايزة تحذفي المنتج ده؟')) return;
-  products = products.filter(p => p.id !== id);
-  saveToCloud();
-  loadAdminProducts();
-  renderProducts(currentCategory === 'all' ? products : products.filter(p => p.category === currentCategory));
+  deleteProductFromCloud(id).then(() => {
+    products = products.filter(p => p.id !== id);
+    localStorage.setItem('flora_products', JSON.stringify(products));
+    loadAdminProducts();
+    renderProducts(currentCategory === 'all' ? products : products.filter(p => p.category === currentCategory));
+    updateCatCounts();
+  });
   showToast('🗑️ المنتج اتحذف');
 }
 function editProduct(id) {
