@@ -409,6 +409,14 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
       <span class="cat-icon">🕯️</span>
       <div class="cat-name">شمع</div>
     </div>
+    <div class="cat-card" onclick="filterCategory('mugs',this)">
+      <span class="cat-icon">☕</span>
+      <div class="cat-name">مجات</div>
+    </div>
+    <div class="cat-card" onclick="filterCategory('mirrors',this)">
+      <span class="cat-icon">🪞</span>
+      <div class="cat-name">مرايات</div>
+    </div>
     <div class="cat-card" onclick="filterCategory('boxes',this)">
       <span class="cat-icon">🎁</span>
       <div class="cat-name">بوكسات</div>
@@ -639,6 +647,8 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
                 <option value="medals">🏅 ميداليات</option>
                 <option value="labubu">🧸 لبوبو</option>
                 <option value="candles">🕯️ شمع</option>
+                <option value="mugs">☕ مجات</option>
+                <option value="mirrors">🪞 مرايات</option>
                 <option value="boxes">🎁 بوكسات هدايا</option>
               </select>
             </div>
@@ -656,6 +666,26 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
             <input type="text" id="p-img-url" placeholder="https://example.com/image.jpg" style="width:100%;padding:0.7rem;border:1.5px solid var(--rose-light);border-radius:10px;font-family:inherit;font-size:0.95rem" oninput="previewImgUrl(this.value)" />
             <img id="p-img-preview" style="width:100%;border-radius:12px;margin-top:0.8rem;display:none;max-height:200px;object-fit:cover" />
           </div>
+
+          <!-- COLORS -->
+          <div class="admin-field">
+            <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem">
+              <span>🎨 الألوان المتاحة</span>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;margin-right:auto;cursor:pointer">
+                <input type="checkbox" id="has-colors" onchange="toggleColorsSection()" style="width:16px;height:16px;accent-color:var(--rose-deep)">
+                <span>المنتج فيه ألوان</span>
+              </label>
+            </label>
+            <div id="colors-section" style="display:none">
+              <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap" id="color-tags"></div>
+              <div style="display:flex;gap:0.5rem">
+                <input id="color-input" placeholder="اكتب لون مثل: أحمر، أزرق..." style="flex:1;padding:0.6rem;border:1.5px solid var(--rose-light);border-radius:10px;font-family:inherit;font-size:0.9rem" onkeydown="if(event.key==='Enter'){event.preventDefault();addColor()}" />
+                <button type="button" onclick="addColor()" style="background:var(--rose);color:#fff;border:none;border-radius:10px;padding:0.6rem 1rem;cursor:pointer;font-size:0.9rem">+ إضافة</button>
+              </div>
+              <p style="font-size:0.75rem;color:var(--text-light);margin-top:0.5rem">اضغط على اللون لتحديده كـ "خلص" 🚫</p>
+            </div>
+          </div>
+
           <button class="admin-submit" onclick="addProduct()">
             <i class="fas fa-plus-circle"></i> <span id="submit-btn-txt">إضافة المنتج</span>
           </button>
@@ -711,7 +741,8 @@ async function loadFromCloud() {
       emoji: p.emoji,
       badge: p.badge,
       image: p.image,
-      outOfStock: p.out_of_stock
+      outOfStock: p.out_of_stock,
+      colors: p.colors || []
     }));
     localStorage.setItem('flora_products', JSON.stringify(products));
     renderProducts(currentCategory === 'all' ? products : products.filter(p => p.category === currentCategory));
@@ -732,7 +763,7 @@ async function addProductToCloud(p) {
   const res = await fetch(`${SB_URL}/rest/v1/products`, {
     method: 'POST',
     headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
-    body: JSON.stringify({ name: p.name, description: p.desc || p.description || '', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img || p.image || null, out_of_stock: false })
+    body: JSON.stringify({ name: p.name, description: p.desc || p.description || '', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img || p.image || null, out_of_stock: false, colors: p.colors || [] })
   });
   const data = await res.json();
   return data[0];
@@ -764,8 +795,8 @@ let selectedShipping = { type: 'inside', cost: settings.shipInside || 45 };
 let editingId = null;
 let imgData = null;
 
-const catEmoji = { accessories:'💍', watches:'⌚', medals:'🏅', labubu:'🧸', candles:'🕯️', boxes:'🎁' };
-const catNames = { accessories:'إكسسوارات', watches:'ساعات', medals:'ميداليات', labubu:'لبوبو', candles:'شمع', boxes:'بوكسات' };
+const catEmoji = { accessories:'💍', watches:'⌚', medals:'🏅', labubu:'🧸', candles:'🕯️', mugs:'☕', mirrors:'🪞', boxes:'🎁' };
+const catNames = { accessories:'إكسسوارات', watches:'ساعات', medals:'ميداليات', labubu:'لبوبو', candles:'شمع', mugs:'مجات', mirrors:'مرايات', boxes:'بوكسات' };
 
 // ===== INIT =====
 window.addEventListener('load', () => {
@@ -845,6 +876,11 @@ function renderProducts(list) {
         <div class="product-desc">${p.desc || p.description || 'منتج مميز من فلورا ستور 🌸'}</div>
         <div class="product-footer">
           <div class="product-price">${p.price.toLocaleString()} <span>جنيه</span></div>
+          ${p.colors && p.colors.length > 0 ? `
+            <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin:0.4rem 0">
+              ${p.colors.map(c => `<span style="font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid ${c.soldOut?'#ccc':'var(--rose-light)'};background:${c.soldOut?'#f5f5f5':'var(--rose-pale)'};color:${c.soldOut?'#aaa':'var(--rose-deep)'};${c.soldOut?'text-decoration:line-through':''}">${c.name}${c.soldOut?' ✕':''}</span>`).join('')}
+            </div>
+          ` : ''}
           ${p.outOfStock ? `<span style="font-size:0.75rem;color:#e67e22;font-weight:700">نفذت الكمية</span>` : `<button class="add-cart-btn" onclick="addToCart('${p.id}');event.stopPropagation()"><i class="fas fa-plus"></i></button>`}
         </div>
       </div>
@@ -1070,6 +1106,54 @@ function previewImgUrl(url) {
   else { prev.style.display = 'none'; imgData = null; }
 }
 
+// ===== COLORS =====
+let productColors = []; // [{name, soldOut}]
+
+function toggleColorsSection() {
+  const has = document.getElementById('has-colors').checked;
+  document.getElementById('colors-section').style.display = has ? 'block' : 'none';
+  if (!has) { productColors = []; renderColorTags(); }
+}
+
+function addColor() {
+  const input = document.getElementById('color-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (productColors.find(c => c.name === name)) { showToast('⚠️ اللون موجود بالفعل'); return; }
+  productColors.push({ name, soldOut: false });
+  input.value = '';
+  renderColorTags();
+}
+
+function renderColorTags() {
+  const container = document.getElementById('color-tags');
+  if (!container) return;
+  container.innerHTML = productColors.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:0.3rem;background:${c.soldOut?'#f0f0f0':'var(--rose-pale)'};border:1.5px solid ${c.soldOut?'#ccc':'var(--rose-light)'};border-radius:20px;padding:0.35rem 0.7rem;cursor:pointer;transition:all 0.2s" onclick="toggleColorSoldOut(${i})" title="${c.soldOut?'اضغط لجعله متاح':'اضغط لتعليمه كـ خلص'}">
+      <span style="font-size:0.85rem;${c.soldOut?'text-decoration:line-through;color:#999':''}">${c.name}</span>
+      ${c.soldOut ? '<span style="font-size:0.7rem;color:#e67e22">خلص</span>' : ''}
+      <span onclick="event.stopPropagation();removeColor(${i})" style="margin-right:0.3rem;color:#c0392b;font-size:0.8rem;cursor:pointer">✕</span>
+    </div>
+  `).join('');
+}
+
+function toggleColorSoldOut(i) {
+  productColors[i].soldOut = !productColors[i].soldOut;
+  renderColorTags();
+}
+
+function removeColor(i) {
+  productColors.splice(i, 1);
+  renderColorTags();
+}
+
+function resetColorsForm() {
+  productColors = [];
+  document.getElementById('has-colors').checked = false;
+  document.getElementById('colors-section').style.display = 'none';
+  renderColorTags();
+}
+
 function addProduct() {
   const name = document.getElementById('p-name').value.trim();
   const price = parseFloat(document.getElementById('p-price').value);
@@ -1086,6 +1170,7 @@ function addProduct() {
     badge: document.getElementById('p-badge').value.trim(),
     img: imgUrl || imgData || null,
     image: imgUrl || imgData || null,
+    colors: document.getElementById('has-colors').checked ? [...productColors] : [],
   };
   if (editingId) {
     const idx = products.findIndex(x => String(x.id) === String(editingId));
@@ -1094,7 +1179,7 @@ function addProduct() {
     fetch(`${SB_URL}/rest/v1/products?id=eq.${editingId}`, {
       method: 'PATCH',
       headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
-      body: JSON.stringify({ name: p.name, description: p.desc||p.description||'', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img||p.image||null })
+      body: JSON.stringify({ name: p.name, description: p.desc||p.description||'', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img||p.image||null, colors: p.colors||[] })
     });
     localStorage.setItem('flora_products', JSON.stringify(products));
     renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
@@ -1112,6 +1197,7 @@ function addProduct() {
   }
   showToast(`✅ "${name}" اتضافت بنجاح`);
   ['p-name','p-desc','p-price','p-emoji','p-badge','p-img-url'].forEach(id => document.getElementById(id).value = '');
+  resetColorsForm();
   document.getElementById('p-img-preview').style.display = 'none';
   document.getElementById('p-img').value = '';
   imgData = null;
@@ -1178,6 +1264,15 @@ function editProduct(id) {
     const urlInput = document.getElementById('p-img-url');
     if (urlInput) urlInput.value = imgSrc;
   }
+  // Load colors
+  if (p.colors && p.colors.length > 0) {
+    productColors = [...p.colors];
+    document.getElementById('has-colors').checked = true;
+    document.getElementById('colors-section').style.display = 'block';
+  } else {
+    resetColorsForm();
+  }
+  renderColorTags();
   document.getElementById('submit-btn-txt').textContent = 'حفظ التعديلات';
   document.querySelectorAll('.admin-tab')[0].click();
   showToast('✏️ عدلي المنتج واحفظيه');
