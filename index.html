@@ -112,6 +112,7 @@ section { padding:6rem 3rem; position:relative; }
 .filter-count { font-size:0.85rem; color:var(--text-light); }
 .filter-sort { padding:0.5rem 1rem; border:1px solid var(--rose-light); border-radius:20px; background:#fff; color:var(--text); font-family:'Tajawal',sans-serif; font-size:0.85rem; cursor:pointer; outline:none; }
 .products-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:2rem; max-width:1200px; margin:0 auto; }
+@media(max-width:768px) { .products-grid { grid-template-columns:repeat(2,1fr); gap:0.8rem; } .product-name { font-size:0.85rem; } .product-price { font-size:0.95rem; } .product-info { padding:0.8rem; } }
 .product-card { background:#fff; border-radius:20px; overflow:hidden; border:1px solid rgba(201,123,132,0.08); transition:all 0.4s; position:relative; cursor:pointer; }
 .product-card:hover { transform:translateY(-10px); box-shadow:var(--shadow-hover); }
 .product-img-wrap { position:relative; overflow:hidden; aspect-ratio:1/1; background:var(--rose-pale); }
