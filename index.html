@@ -774,7 +774,7 @@ async function loadFromCloud() {
       images: p.images || []
     }));
     localStorage.setItem('flora_products', JSON.stringify(products));
-    renderProducts(currentCategory === 'all' ? products : products.filter(p => p.category === currentCategory));
+    renderProducts(products);
     updateCatCounts();
   } catch(e) {
     console.error('Cloud load error:', e);
@@ -839,6 +839,7 @@ window.addEventListener('load', () => {
   updateShippingDisplay();
   // show page immediately, load cloud in background
   products = JSON.parse(localStorage.getItem('flora_products') || '[]');
+  currentCategory = 'all';
   renderProducts(products);
   loadFromCloud();
 });
@@ -1334,8 +1335,9 @@ function addProduct() {
       if (saved) p.id = String(saved.id);
       products.push(p);
       localStorage.setItem('flora_products', JSON.stringify(products));
-      renderProducts(currentCategory === 'all' ? products : products.filter(x => x.category === currentCategory));
+      renderProducts(products);
       updateCatCounts();
+      loadAdminProducts();
     });
   }
   showToast(`✅ "${name}" اتضافت بنجاح`);
