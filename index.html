@@ -777,6 +777,10 @@ async function loadFromCloud() {
       images: p.images || []
     }));
     localStorage.setItem('flora_products', JSON.stringify(products));
+    currentCategory = 'all';
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
+    const allCard = document.querySelector('.cat-card');
+    if (allCard) allCard.classList.add('active');
     renderProducts(products);
     updateCatCounts();
   } catch(e) {
@@ -843,6 +847,9 @@ window.addEventListener('load', () => {
   // show page immediately, load cloud in background
   products = JSON.parse(localStorage.getItem('flora_products') || '[]');
   currentCategory = 'all';
+  // Auto-activate "all" cat card
+  const allCatCard = document.querySelector('.cat-card');
+  if (allCatCard) allCatCard.classList.add('active');
   renderProducts(products);
   loadFromCloud();
 });
@@ -1452,8 +1459,10 @@ function secretClick() {
 }
 
 function updateShippingDisplay() {
-  document.getElementById('display-ship-inside').textContent = `${settings.shipInside || 45} جنيه`;
-  document.getElementById('display-ship-outside').textContent = `${settings.shipOutside || 70} جنيه`;
+  const inside = document.getElementById('display-ship-inside');
+  const outside = document.getElementById('display-ship-outside');
+  if (inside) inside.textContent = `${settings.shipInside || 45} جنيه`;
+  if (outside) outside.textContent = `${settings.shipOutside || 70} جنيه`;
 }
 </script>
 </body>
