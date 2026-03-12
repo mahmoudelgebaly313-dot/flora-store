@@ -760,15 +760,18 @@ async function loadFromCloud() {
   try {
     const res = await fetch(`${SB_URL}/rest/v1/products?select=*&order=created_at.asc`, { headers: SB_HEADERS });
     const data = await res.json();
+    if (!Array.isArray(data)) { console.error('Supabase error:', data); return; }
     products = data.map(p => ({
       id: String(p.id),
       name: p.name,
       description: p.description,
+      desc: p.description,
       price: p.price,
       category: p.category,
       emoji: p.emoji,
       badge: p.badge,
       image: p.image,
+      img: p.image,
       outOfStock: p.out_of_stock,
       colors: p.colors || [],
       images: p.images || []
