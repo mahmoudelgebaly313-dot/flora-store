@@ -709,9 +709,7 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
             </label>
             <div id="colors-section" style="display:none;margin-top:0.5rem">
               <div style="display:flex;gap:0.4rem;margin-bottom:0.8rem;flex-wrap:wrap" id="color-tags"></div>
-              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem" id="color-palette">
-                ${[['أحمر','#e74c3c'],['وردي','#e91e8c'],['برتقالي','#e67e22'],['أصفر','#f1c40f'],['أخضر','#27ae60'],['زيتي','#556b2f'],['أزرق','#3498db'],['كحلي','#1a237e'],['سماوي','#87ceeb'],['تركواز','#1abc9c'],['بنفسجي','#9b59b6'],['بني','#795548'],['ذهبي','#c9a96e'],['فضي','#bdc3c7'],['أبيض','#f0f0f0'],['أسود','#2c2c2c'],['رمادي','#95a5a6'],['بيج','#f5ede8'],['كريمي','#fffdd0'],['نيلي','#4169e1']].map(([name,hex]) => `<div onclick="addColorByName('${name}')" title="${name}" style="width:28px;height:28px;border-radius:50%;background:${hex};cursor:pointer;border:2px solid rgba(0,0,0,0.1);transition:transform 0.2s;flex-shrink:0" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
-              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem" id="color-palette"></div>
               <div style="display:flex;gap:0.5rem">
                 <input id="color-input" placeholder="أو اكتب لون مخصص..." style="flex:1;padding:0.6rem;border:1.5px solid var(--rose-light);border-radius:10px;font-family:inherit;font-size:0.9rem" onkeydown="if(event.key==='Enter'){event.preventDefault();addColor()}" />
                 <button type="button" onclick="addColor()" style="background:var(--rose);color:#fff;border:none;border-radius:10px;padding:0.6rem 1rem;cursor:pointer;font-size:0.9rem;font-family:inherit">+ إضافة</button>
@@ -1340,6 +1338,14 @@ function toggleColorsSection() {
   const has = document.getElementById('has-colors').checked;
   document.getElementById('colors-section').style.display = has ? 'block' : 'none';
   if (!has) { productColors = []; renderColorTags(); }
+  else renderColorPalette();
+}
+
+function renderColorPalette() {
+  const palette = document.getElementById('color-palette');
+  if (!palette) return;
+  const colors = [['أحمر','#e74c3c'],['وردي','#e91e8c'],['برتقالي','#e67e22'],['أصفر','#f1c40f'],['أخضر','#27ae60'],['زيتي','#556b2f'],['أزرق','#3498db'],['كحلي','#1a237e'],['سماوي','#87ceeb'],['تركواز','#1abc9c'],['بنفسجي','#9b59b6'],['بني','#795548'],['ذهبي','#c9a96e'],['فضي','#bdc3c7'],['أبيض','#f0f0f0'],['أسود','#2c2c2c'],['رمادي','#95a5a6'],['بيج','#f5ede8'],['كريمي','#fffdd0'],['نيلي','#4169e1']];
+  palette.innerHTML = colors.map(([name,hex]) => `<div onclick="addColorByName('${name}')" title="${name}" style="width:28px;height:28px;border-radius:50%;background:${hex};cursor:pointer;border:2px solid rgba(0,0,0,0.1);transition:transform 0.2s;flex-shrink:0" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('');
 }
 
 function addColorByName(name) {
@@ -1515,6 +1521,7 @@ function editProduct(id) {
     productColors = [...p.colors];
     document.getElementById('has-colors').checked = true;
     document.getElementById('colors-section').style.display = 'block';
+    renderColorPalette();
   } else {
     resetColorsForm();
   }
