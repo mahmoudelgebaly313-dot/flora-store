@@ -648,6 +648,7 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
         <div class="admin-tabs">
           <button class="admin-tab active" onclick="switchTab('add',this)">➕ إضافة منتج</button>
           <button class="admin-tab" onclick="switchTab('manage',this)">📦 إدارة المنتجات</button>
+          <button class="admin-tab" onclick="switchTab('soldout',this)">🚫 نفذت الكمية</button>
           <button class="admin-tab" onclick="switchTab('settings',this)">⚙️ الإعدادات</button>
         </div>
 
@@ -665,6 +666,10 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
             <div class="form-group">
               <label>السعر (جنيه) *</label>
               <input type="number" id="p-price" placeholder="مثال: 150" min="0" />
+            </div>
+            <div class="form-group">
+              <label>الكمية المتاحة</label>
+              <input type="number" id="p-stock" placeholder="مثال: 10 (اتركه فاضي = غير محدود)" min="0" />
             </div>
             <div class="form-group">
               <label>الكاتيجوري *</label>
@@ -727,6 +732,11 @@ footer { background:var(--dark); color:rgba(255,255,255,0.7); padding:4rem 3rem 
           <div class="admin-products-list" id="admin-products-list"></div>
         </div>
 
+        <!-- SOLD OUT -->
+        <div class="admin-section" id="tab-soldout">
+          <div id="soldout-products-list"></div>
+        </div>
+
         <!-- SETTINGS -->
         <div class="admin-section" id="tab-settings">
           <div class="form-group">
@@ -777,7 +787,8 @@ async function loadFromCloud() {
       img: p.image,
       outOfStock: p.out_of_stock,
       colors: p.colors || [],
-      images: p.images || []
+      images: p.images || [],
+      stock: p.stock !== undefined ? p.stock : null
     }));
     localStorage.setItem('flora_products', JSON.stringify(products));
     currentCategory = 'all';
@@ -802,7 +813,7 @@ async function addProductToCloud(p) {
   const res = await fetch(`${SB_URL}/rest/v1/products`, {
     method: 'POST',
     headers: { ...SB_HEADERS, 'Prefer': 'return=representation' },
-    body: JSON.stringify({ name: p.name, description: p.desc || p.description || '', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img || p.image || null, out_of_stock: false, colors: p.colors || [], images: p.images || [] })
+    body: JSON.stringify({ name: p.name, description: p.desc || p.description || '', price: p.price, category: p.category, emoji: p.emoji, badge: p.badge, image: p.img || p.image || null, out_of_stock: false, colors: p.colors || [], images: p.images || [], stock: p.stock !== undefined ? p.stock : null })
   });
   const data = await res.json();
   return data[0];
@@ -1105,6 +1116,22 @@ function sendWhatsAppOrder() {
   msg += `━━━━━━━━━━━━━━━━━━\n`;
   msg += `شكراً لاختيارك فلورا ستور 🌸`;
   window.open(`https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  // Deduct stock
+  cart.forEach(item => {
+    const p = products.find(x => String(x.id) === String(item.id));
+    if (p && p.stock !== null && p.stock !== undefined) {
+      p.stock = Math.max(0, p.stock - item.qty);
+      if (p.stock === 0) p.outOfStock = true;
+      // Update in Supabase
+      fetch(`${SB_URL}/rest/v1/products?id=eq.${p.id}`, {
+        method: 'PATCH',
+        headers: SB_HEADERS,
+        body: JSON.stringify({ stock: p.stock, out_of_stock: p.outOfStock })
+      });
+    }
+  });
+  localStorage.setItem('flora_products', JSON.stringify(products));
+  renderProducts(products);
   cart = [];
   saveCart();
   updateCartCount();
@@ -1227,6 +1254,47 @@ function switchTab(tab, el) {
   document.getElementById('tab-'+tab).classList.add('active');
   if (tab === 'manage') loadAdminProducts();
   if (tab === 'settings') loadSettings();
+  if (tab === 'soldout') loadSoldOutProducts();
+}
+
+function loadSoldOutProducts() {
+  const list = document.getElementById('soldout-products-list');
+  const soldOut = products.filter(p => p.outOfStock || p.stock === 0);
+  if (!soldOut.length) {
+    list.innerHTML = `<div style="text-align:center;color:var(--text-light);padding:2rem"><i class="fas fa-check-circle" style="font-size:2rem;color:#27ae60;display:block;margin-bottom:0.8rem"></i>مفيش منتجات نفذت دلوقتي 🌸</div>`;
+    return;
+  }
+  list.innerHTML = soldOut.map(p => `
+    <div class="admin-product-item" style="opacity:0.7">
+      ${(p.img||p.image) ? `<img src="${p.img||p.image}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;filter:grayscale(60%)">` : `<div class="admin-product-item-img">${p.emoji||catEmoji[p.category]||'🌸'}</div>`}
+      <div class="admin-p-info">
+        <div class="admin-p-name">${p.name} <span style="background:#e74c3c;color:#fff;font-size:0.65rem;padding:0.15rem 0.5rem;border-radius:10px">نفذت</span></div>
+        <div class="admin-p-price">${p.price.toLocaleString()} جم · ${catNames[p.category]||p.category}${p.stock !== null && p.stock !== undefined ? ` · 📦 ${p.stock} قطعة` : ''}</div>
+      </div>
+      <div class="admin-p-actions">
+        <button class="admin-p-btn instock" onclick="restockProduct('${p.id}')">🔄 إعادة إتاحة</button>
+        <button class="admin-p-btn del" onclick="deleteProduct('${p.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function restockProduct(id) {
+  const p = products.find(x => String(x.id) === String(id));
+  if (!p) return;
+  const newStock = prompt('كم الكمية الجديدة؟ (اتركه فاضي = غير محدود)');
+  if (newStock === null) return;
+  p.stock = newStock.trim() !== '' ? parseInt(newStock) : null;
+  p.outOfStock = false;
+  fetch(`${SB_URL}/rest/v1/products?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: SB_HEADERS,
+    body: JSON.stringify({ stock: p.stock, out_of_stock: false })
+  });
+  localStorage.setItem('flora_products', JSON.stringify(products));
+  renderProducts(products);
+  loadSoldOutProducts();
+  showToast(`✅ "${p.name}" متاح تاني!`);
 }
 function previewImg(input) {
   const file = input.files[0]; if (!file) return;
@@ -1315,6 +1383,8 @@ function addProduct() {
     document.getElementById('p-img-url-4')?.value.trim(),
   ].filter(u => u);
   const allImages = imgUrl ? [imgUrl, ...extraImages] : extraImages;
+  const stockVal = document.getElementById('p-stock').value.trim();
+  const stock = stockVal !== '' ? parseInt(stockVal) : null;
   const p = {
     id: editingId || Date.now(),
     name,
@@ -1328,6 +1398,7 @@ function addProduct() {
     image: allImages[0] || imgData || null,
     images: allImages,
     colors: document.getElementById('has-colors').checked ? [...productColors] : [],
+    stock: stock,
   };
   if (editingId) {
     const idx = products.findIndex(x => String(x.id) === String(editingId));
@@ -1372,7 +1443,7 @@ function loadAdminProducts() {
       ${(p.img||p.image) ? `<img src="${p.img||p.image}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;${p.outOfStock?'filter:grayscale(60%)':''}">` : `<div class="admin-product-item-img" style="${p.outOfStock?'filter:grayscale(60%)':''}">${p.emoji||catEmoji[p.category]||'🌸'}</div>`}
       <div class="admin-p-info">
         <div class="admin-p-name">${p.name} ${p.outOfStock ? '<span style="background:#e67e22;color:#fff;font-size:0.65rem;padding:0.15rem 0.5rem;border-radius:10px;margin-right:0.3rem">خلص</span>' : ''}</div>
-        <div class="admin-p-price">${p.price.toLocaleString()} جم · ${catNames[p.category]||p.category}</div>
+        <div class="admin-p-price">${p.price.toLocaleString()} جم · ${catNames[p.category]||p.category}${p.stock !== null && p.stock !== undefined ? ` · 📦 ${p.stock} قطعة` : ''}</div>
       </div>
       <div class="admin-p-actions">
         <button class="admin-p-btn edit" onclick="editProduct('${p.id}')">✏️ تعديل</button>
@@ -1414,6 +1485,7 @@ function editProduct(id) {
   document.getElementById('p-cat').value = p.category;
   document.getElementById('p-emoji').value = p.emoji || '';
   document.getElementById('p-badge').value = p.badge || '';
+  document.getElementById('p-stock').value = (p.stock !== null && p.stock !== undefined) ? p.stock : '';
   const imgSrc = p.img || p.image || '';
   const allImgs = p.images && p.images.length > 0 ? p.images : (imgSrc ? [imgSrc] : []);
   ['p-img-url','p-img-url-2','p-img-url-3','p-img-url-4'].forEach((id, i) => {
