@@ -968,6 +968,7 @@ function updateCartCount() {
 function addToCart(id, selectedColor) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
+  if (p.outOfStock || p.stock === 0) { showToast('⚠️ المنتج ده نفذت كميته!'); return; }
   // If product has colors and no color selected yet, show color picker
   const availableColors = (p.colors || []).filter(c => !c.soldOut);
   if (availableColors.length > 0 && !selectedColor) {
@@ -1144,6 +1145,7 @@ function sendWhatsAppOrder() {
 function openModal(id) {
   const p = products.find(x => String(x.id) === String(id));
   if (!p) return;
+  if (p.outOfStock || p.stock === 0) { showToast('⚠️ المنتج ده نفذت كميته!'); return; }
   document.getElementById('modal-name').textContent = p.name;
   document.getElementById('modal-desc').textContent = p.desc || p.description || 'منتج مميز من فلورا ستور 🌸';
   document.getElementById('modal-price').textContent = `${p.price.toLocaleString()} جنيه`;
